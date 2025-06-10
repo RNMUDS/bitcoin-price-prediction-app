@@ -28,7 +28,7 @@ export default function BitcoinPricePrediction() {
     try {
       // Fetch historical data (past 30 days)
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily'
+        'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=30&interval=daily'
       )
       const data: BitcoinAPIResponse = await response.json()
       
@@ -70,8 +70,8 @@ export default function BitcoinPricePrediction() {
       const fallbackData: PriceData[] = Array.from({ length: 30 + predictionDays }, (_, i) => {
         const date = new Date()
         date.setDate(date.getDate() - 30 + i)
-        const basePrice = 50000
-        const variation = Math.sin(i * 0.2) * 5000 + Math.random() * 2000
+        const basePrice = 15000000 // ¥15,000,000 (approximately $100,000 in JPY)
+        const variation = Math.sin(i * 0.2) * 500000 + Math.random() * 200000
         return {
           date: date.toLocaleDateString('ja-JP'),
           price: Math.round(basePrice + variation),
@@ -87,10 +87,10 @@ export default function BitcoinPricePrediction() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'JPY',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value).replace('US', '')
+    }).format(value)
   }
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -228,7 +228,7 @@ export default function BitcoinPricePrediction() {
                 <YAxis 
                   stroke="#666"
                   fontSize={12}
-                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `¥${(value / 1000000).toFixed(1)}M`}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
@@ -244,7 +244,7 @@ export default function BitcoinPricePrediction() {
                     return <circle cx={props.cx} cy={props.cy} r={3} fill="#3b82f6" stroke="#3b82f6" strokeWidth={2} />
                   }}
                   connectNulls={false}
-                  name="Bitcoin価格 (USD)"
+                  name="Bitcoin価格 (JPY)"
                 />
               </LineChart>
             </ResponsiveContainer>
