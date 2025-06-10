@@ -28,14 +28,33 @@ export default function BitcoinPricePrediction() {
   const fetchBitcoinData = async () => {
     try {
       // Fetch historical data (past historicalDays days)
-      const interval = historicalDays > 90 ? 'weekly' : 'daily'
+      // Use appropriate interval based on the period
+      let interval = 'daily'
+      let apiDays = historicalDays
+      
+      if (historicalDays > 365) {
+        interval = 'weekly'
+      }
+      if (historicalDays > 90) {
+        // For periods longer than 90 days, CoinGecko API requires 'max' parameter for longer periods
+        if (historicalDays > 365) {
+          apiDays = 'max'
+        }
+      }
+      
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=${historicalDays}&interval=${interval}`
+        `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=${apiDays}&interval=${interval}`
       )
       const data: BitcoinAPIResponse = await response.json()
       
-      // Convert to our format
-      const historicalData: PriceData[] = data.prices.map(([timestamp, price]) => ({
+      // Convert to our format and filter to requested period if using 'max'
+      let allPrices = data.prices
+      if (apiDays === 'max' && historicalDays < data.prices.length) {
+        // Filter to the requested number of days from the end
+        allPrices = data.prices.slice(-historicalDays)
+      }
+      
+      const historicalData: PriceData[] = allPrices.map(([timestamp, price]) => ({
         date: new Date(timestamp).toLocaleDateString('ja-JP'),
         price: Math.round(price),
         predicted: false
@@ -138,7 +157,9 @@ export default function BitcoinPricePrediction() {
             <Bitcoin className="w-12 h-12 text-orange-500" />
             <h1 className="text-4xl font-bold text-gray-800">Bitcoin価格予測</h1>
           </div>
-          <p className="text-gray-600 text-lg">過去{historicalDays}日間の価格推移と今後{predictionDays}日間の予測</p>
+          <p className="text-gray-600 text-lg">
+            過去{historicalDays >= 365 ? `${(historicalDays/365).toFixed(1)}年` : `${historicalDays}日`}間の価格推移と今後{predictionDays}日間の予測
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -182,7 +203,7 @@ export default function BitcoinPricePrediction() {
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4">過去データ期間</h2>
             <div className="flex flex-wrap gap-3 mb-4">
-              {[7, 30, 90, 365].map((days) => (
+              {[30, 90, 365, 730, 1825].map((days) => (
                 <button
                   key={days}
                   onClick={() => setHistoricalDays(days)}
@@ -192,26 +213,28 @@ export default function BitcoinPricePrediction() {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {days}日間
+                  {days >= 365 ? `${Math.round(days/365)}年` : `${days}日`}
                 </button>
               ))}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                カスタム期間（1-365日）
+                カスタム期間（1日-5年）
               </label>
               <input
                 type="range"
                 min="1"
-                max="365"
+                max="1825"
                 value={historicalDays}
                 onChange={(e) => setHistoricalDays(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>1日</span>
-                <span className="font-medium text-green-600">{historicalDays}日</span>
-                <span>365日</span>
+                <span className="font-medium text-green-600">
+                  {historicalDays >= 365 ? `${(historicalDays/365).toFixed(1)}年` : `${historicalDays}日`}
+                </span>
+                <span>5年</span>
               </div>
             </div>
           </div>
@@ -266,7 +289,7 @@ export default function BitcoinPricePrediction() {
                   dataKey="date" 
                   stroke="#666"
                   fontSize={12}
-                  interval="preserveStartEnd"
+                  interval={historicalDays > 365 ? Math.floor(priceData.length / 10) : "preserveStartEnd"}
                 />
                 <YAxis 
                   stroke="#666"
