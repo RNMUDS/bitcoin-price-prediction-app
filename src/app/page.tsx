@@ -18,10 +18,11 @@ export default function BitcoinPricePrediction() {
   const [priceData, setPriceData] = useState<PriceData[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPrice, setCurrentPrice] = useState<number>(0)
+  const [predictionDays, setPredictionDays] = useState<number>(7)
 
   useEffect(() => {
     fetchBitcoinData()
-  }, [])
+  }, [predictionDays])
 
   const fetchBitcoinData = async () => {
     try {
@@ -38,11 +39,11 @@ export default function BitcoinPricePrediction() {
         predicted: false
       }))
 
-      // Generate simple prediction (next 7 days)
+      // Generate simple prediction (next predictionDays days)
       const lastPrice = historicalData[historicalData.length - 1].price
       const predictions: PriceData[] = []
       
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= predictionDays; i++) {
         const futureDate = new Date()
         futureDate.setDate(futureDate.getDate() + i)
         
@@ -66,7 +67,7 @@ export default function BitcoinPricePrediction() {
     } catch (error) {
       console.error('Error fetching Bitcoin data:', error)
       // Fallback data if API fails
-      const fallbackData: PriceData[] = Array.from({ length: 37 }, (_, i) => {
+      const fallbackData: PriceData[] = Array.from({ length: 30 + predictionDays }, (_, i) => {
         const date = new Date()
         date.setDate(date.getDate() - 30 + i)
         const basePrice = 50000
@@ -135,7 +136,7 @@ export default function BitcoinPricePrediction() {
             <Bitcoin className="w-12 h-12 text-orange-500" />
             <h1 className="text-4xl font-bold text-gray-800">Bitcoin価格予測</h1>
           </div>
-          <p className="text-gray-600 text-lg">過去30日間の価格推移と今後7日間の予測</p>
+          <p className="text-gray-600 text-lg">過去30日間の価格推移と今後{predictionDays}日間の予測</p>
         </div>
 
         {/* Stats Cards */}
@@ -167,8 +168,46 @@ export default function BitcoinPricePrediction() {
               <Calendar className="w-8 h-8 text-blue-500" />
               <div>
                 <p className="text-sm text-gray-500">予測期間</p>
-                <p className="text-2xl font-bold text-gray-800">7日間</p>
+                <p className="text-2xl font-bold text-gray-800">{predictionDays}日間</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Prediction Period Selector */}
+        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">予測期間設定</h2>
+          <div className="flex flex-wrap gap-3">
+            {[3, 7, 14, 30].map((days) => (
+              <button
+                key={days}
+                onClick={() => setPredictionDays(days)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  predictionDays === days
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {days}日間
+              </button>
+            ))}
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              カスタム期間（1-90日）
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="90"
+              value={predictionDays}
+              onChange={(e) => setPredictionDays(parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>1日</span>
+              <span className="font-medium text-blue-600">{predictionDays}日</span>
+              <span>90日</span>
             </div>
           </div>
         </div>
@@ -224,7 +263,7 @@ export default function BitcoinPricePrediction() {
 
         {/* Prediction Table */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">今後7日間の価格予測</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">今後{predictionDays}日間の価格予測</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
