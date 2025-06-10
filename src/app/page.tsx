@@ -19,16 +19,18 @@ export default function BitcoinPricePrediction() {
   const [loading, setLoading] = useState(true)
   const [currentPrice, setCurrentPrice] = useState<number>(0)
   const [predictionDays, setPredictionDays] = useState<number>(7)
+  const [historicalDays, setHistoricalDays] = useState<number>(30)
 
   useEffect(() => {
     fetchBitcoinData()
-  }, [predictionDays])
+  }, [predictionDays, historicalDays])
 
   const fetchBitcoinData = async () => {
     try {
-      // Fetch historical data (past 30 days)
+      // Fetch historical data (past historicalDays days)
+      const interval = historicalDays > 90 ? 'weekly' : 'daily'
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=30&interval=daily'
+        `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=jpy&days=${historicalDays}&interval=${interval}`
       )
       const data: BitcoinAPIResponse = await response.json()
       
@@ -67,19 +69,19 @@ export default function BitcoinPricePrediction() {
     } catch (error) {
       console.error('Error fetching Bitcoin data:', error)
       // Fallback data if API fails
-      const fallbackData: PriceData[] = Array.from({ length: 30 + predictionDays }, (_, i) => {
+      const fallbackData: PriceData[] = Array.from({ length: historicalDays + predictionDays }, (_, i) => {
         const date = new Date()
-        date.setDate(date.getDate() - 30 + i)
+        date.setDate(date.getDate() - historicalDays + i)
         const basePrice = 15000000 // ¥15,000,000 (approximately $100,000 in JPY)
         const variation = Math.sin(i * 0.2) * 500000 + Math.random() * 200000
         return {
           date: date.toLocaleDateString('ja-JP'),
           price: Math.round(basePrice + variation),
-          predicted: i >= 30
+          predicted: i >= historicalDays
         }
       })
       setPriceData(fallbackData)
-      setCurrentPrice(fallbackData[29].price)
+      setCurrentPrice(fallbackData[historicalDays - 1].price)
       setLoading(false)
     }
   }
@@ -136,7 +138,7 @@ export default function BitcoinPricePrediction() {
             <Bitcoin className="w-12 h-12 text-orange-500" />
             <h1 className="text-4xl font-bold text-gray-800">Bitcoin価格予測</h1>
           </div>
-          <p className="text-gray-600 text-lg">過去30日間の価格推移と今後{predictionDays}日間の予測</p>
+          <p className="text-gray-600 text-lg">過去{historicalDays}日間の価格推移と今後{predictionDays}日間の予測</p>
         </div>
 
         {/* Stats Cards */}
@@ -174,40 +176,81 @@ export default function BitcoinPricePrediction() {
           </div>
         </div>
 
-        {/* Prediction Period Selector */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">予測期間設定</h2>
-          <div className="flex flex-wrap gap-3">
-            {[3, 7, 14, 30].map((days) => (
-              <button
-                key={days}
-                onClick={() => setPredictionDays(days)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  predictionDays === days
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {days}日間
-              </button>
-            ))}
+        {/* Period Selectors */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Historical Period Selector */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">過去データ期間</h2>
+            <div className="flex flex-wrap gap-3 mb-4">
+              {[7, 30, 90, 365].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => setHistoricalDays(days)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    historicalDays === days
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {days}日間
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                カスタム期間（1-365日）
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="365"
+                value={historicalDays}
+                onChange={(e) => setHistoricalDays(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>1日</span>
+                <span className="font-medium text-green-600">{historicalDays}日</span>
+                <span>365日</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              カスタム期間（1-90日）
-            </label>
-            <input
-              type="range"
-              min="1"
-              max="90"
-              value={predictionDays}
-              onChange={(e) => setPredictionDays(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>1日</span>
-              <span className="font-medium text-blue-600">{predictionDays}日</span>
-              <span>90日</span>
+
+          {/* Prediction Period Selector */}
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">予測期間設定</h2>
+            <div className="flex flex-wrap gap-3 mb-4">
+              {[3, 7, 14, 30].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => setPredictionDays(days)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    predictionDays === days
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {days}日間
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                カスタム期間（1-90日）
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="90"
+                value={predictionDays}
+                onChange={(e) => setPredictionDays(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>1日</span>
+                <span className="font-medium text-blue-600">{predictionDays}日</span>
+                <span>90日</span>
+              </div>
             </div>
           </div>
         </div>
